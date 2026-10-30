@@ -1,0 +1,272 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitOverview.ViewModels"
+        xmlns:m="using:GitOverview.Models"
+        xmlns:c="using:GitOverview.Converters"
+        xmlns:nf="using:neisep.NerdFonts"
+        x:Class="GitOverview.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Git Overview"
+        Icon="/Assets/app.ico"
+        Width="1400" Height="800" MinWidth="900" MinHeight="500">
+
+  <Window.Styles>
+    <Style Selector="Border.chip">
+      <Setter Property="CornerRadius" Value="14" />
+      <Setter Property="Padding" Value="12,5" />
+      <Setter Property="Background" Value="#1F808080" />
+    </Style>
+    <Style Selector="Border.chip TextBlock">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="DataGridCell">
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="DataGridCell StackPanel.cell">
+      <Setter Property="Orientation" Value="Horizontal" />
+      <Setter Property="Spacing" Value="8" />
+      <Setter Property="Margin" Value="12,8" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.muted">
+      <Setter Property="Opacity" Value="0.6" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel>
+
+    <!-- Header -->
+    <Border DockPanel.Dock="Top" Padding="20,16" Background="#14808080">
+      <StackPanel Spacing="14">
+
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Classes="icon" Text="{x:Static nf:Dev.Git}" FontSize="30" Foreground="#F05032" />
+            <TextBlock Text="Git Overview" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center" />
+          </StackPanel>
+
+          <TextBox Grid.Column="1" Text="{Binding RootPath}" PlaceholderText="Folder to scan, e.g. C:\repos"
+                   VerticalContentAlignment="Center">
+            <TextBox.InnerLeftContent>
+              <TextBlock Classes="icon" Text="{x:Static nf:Oct.FileDirectoryOpenFill}" Margin="10,0,0,0" Opacity="0.7" />
+            </TextBox.InnerLeftContent>
+            <TextBox.KeyBindings>
+              <KeyBinding Gesture="Enter" Command="{Binding ScanCommand}" />
+            </TextBox.KeyBindings>
+          </TextBox>
+
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+            <Button Click="OnBrowseClick">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Classes="icon" Text="{x:Static nf:Fa.FolderOpen}" />
+                <TextBlock Text="Browse…" />
+              </StackPanel>
+            </Button>
+            <Button Classes="accent" Command="{Binding ScanCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Classes="icon" Text="{x:Static nf:Oct.Sync}" />
+                <TextBlock Text="Scan" />
+              </StackPanel>
+            </Button>
+            <Button Command="{Binding ScanCancelCommand}" IsVisible="{Binding ScanCommand.IsRunning}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Classes="icon" Text="{x:Static nf:Cod.StopCircle}" />
+                <TextBlock Text="Cancel" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </Grid>
+
+        <Grid ColumnDefinitions="Auto,Auto,260,*" ColumnSpacing="20">
+          <CheckBox IsChecked="{Binding FetchFirst}"
+                    ToolTip.Tip="Run 'git fetch --all --prune' first so remote state is current (slower)">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <TextBlock Classes="icon" Text="{x:Static nf:Oct.Download}" />
+              <TextBlock Text="Fetch before scan" />
+            </StackPanel>
+          </CheckBox>
+
+          <CheckBox Grid.Column="1" IsChecked="{Binding OnlyNeedsAttention}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <TextBlock Classes="icon" Text="{x:Static nf:Oct.Filter}" />
+              <TextBlock Text="Only needs attention" />
+            </StackPanel>
+          </CheckBox>
+
+          <TextBox Grid.Column="2" Text="{Binding SearchText}" PlaceholderText="Filter by path or branch">
+            <TextBox.InnerLeftContent>
+              <TextBlock Classes="icon" Text="{x:Static nf:Oct.Search}" Margin="10,0,0,0" Opacity="0.7" />
+            </TextBox.InnerLeftContent>
+          </TextBox>
+
+          <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Border Classes="chip" ToolTip.Tip="Repositories found">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Classes="icon" Text="{x:Static nf:Oct.Repo}" />
+                <TextBlock Text="{Binding TotalCount}" FontWeight="SemiBold" />
+                <TextBlock Text="repos" Opacity="0.7" />
+              </StackPanel>
+            </Border>
+            <Border Classes="chip" ToolTip.Tip="No remote, unpushed commits or errors: work may be lost if deleted">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Classes="icon" Text="{x:Static nf:Oct.CloudOffline}" Foreground="#F85149" />
+                <TextBlock Text="{Binding AtRiskCount}" FontWeight="SemiBold" />
+                <TextBlock Text="at risk" Opacity="0.7" />
+              </StackPanel>
+            </Border>
+            <Border Classes="chip" ToolTip.Tip="Uncommitted changes, stashes or branches without upstream">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Classes="icon" Text="{x:Static nf:Oct.Pencil}" Foreground="#D29922" />
+                <TextBlock Text="{Binding UncommittedCount}" FontWeight="SemiBold" />
+                <TextBlock Text="to check" Opacity="0.7" />
+              </StackPanel>
+            </Border>
+            <Border Classes="chip" ToolTip.Tip="Everything is pushed and the working tree is clean">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Classes="icon" Text="{x:Static nf:Oct.CheckCircle}" Foreground="#3FB950" />
+                <TextBlock Text="{Binding CleanCount}" FontWeight="SemiBold" />
+                <TextBlock Text="clean" Opacity="0.7" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </Grid>
+
+      </StackPanel>
+    </Border>
+
+    <!-- Status bar -->
+    <Border DockPanel.Dock="Bottom" Padding="20,8" Background="#14808080">
+      <Grid ColumnDefinitions="*,200" ColumnSpacing="12">
+        <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" Opacity="0.8" />
+        <ProgressBar Grid.Column="1" IsIndeterminate="True" IsVisible="{Binding ScanCommand.IsRunning}" />
+      </Grid>
+    </Border>
+
+    <!-- Repositories -->
+    <DataGrid ItemsSource="{Binding Repositories}"
+              IsReadOnly="True"
+              CanUserSortColumns="True"
+              CanUserResizeColumns="True"
+              SelectionMode="Single"
+              GridLinesVisibility="Horizontal"
+              HeadersVisibility="Column"
+              DoubleTapped="OnGridDoubleTapped">
+      <DataGrid.Columns>
+
+        <DataGridTemplateColumn Header="Status" SortMemberPath="State" Width="190">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="m:RepoStatus">
+              <StackPanel Classes="cell" ToolTip.Tip="{Binding Error}">
+                <TextBlock Classes="icon" FontSize="16"
+                           Text="{Binding State, Converter={x:Static c:RepoConverters.Glyph}}"
+                           Foreground="{Binding State, Converter={x:Static c:RepoConverters.Brush}}" />
+                <TextBlock Text="{Binding State, Converter={x:Static c:RepoConverters.Label}}"
+                           Foreground="{Binding State, Converter={x:Static c:RepoConverters.Brush}}"
+                           VerticalAlignment="Center" />
+              </StackPanel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="Repository" SortMemberPath="RelativePath" Width="2.5*">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="m:RepoStatus">
+              <StackPanel Classes="cell">
+                <TextBlock Classes="icon" Text="{x:Static nf:Oct.Repo}" FontSize="15" Opacity="0.8" />
+                <StackPanel VerticalAlignment="Center">
+                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                  <TextBlock Classes="muted" Text="{Binding RelativePath}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+              </StackPanel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="Branch" SortMemberPath="Branch" Width="1.5*">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="m:RepoStatus">
+              <StackPanel Classes="cell">
+                <TextBlock Classes="icon" Text="{x:Static nf:Oct.GitBranch}" Opacity="0.8" />
+                <TextBlock Text="{Binding Branch}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="Remote" SortMemberPath="RemoteText" Width="1.5*">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="m:RepoStatus">
+              <StackPanel Classes="cell" ToolTip.Tip="{Binding RemoteText}">
+                <TextBlock Classes="icon" Opacity="0.8"
+                           Text="{Binding HasRemote, Converter={x:Static c:RepoConverters.RemoteGlyph}}" />
+                <TextBlock Classes="muted" Text="{Binding RemoteDisplay}" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="Unpushed" SortMemberPath="UnpushedCommits" Width="105">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="m:RepoStatus">
+              <StackPanel Classes="cell"
+                          Opacity="{Binding UnpushedCommits, Converter={x:Static c:RepoConverters.CountOpacity}}">
+                <TextBlock Classes="icon" Text="{x:Static nf:Oct.RepoPush}" />
+                <TextBlock Text="{Binding UnpushedCommits}" VerticalAlignment="Center" />
+              </StackPanel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="Changes" SortMemberPath="Changes" Width="105">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="m:RepoStatus">
+              <StackPanel Classes="cell"
+                          Opacity="{Binding Changes, Converter={x:Static c:RepoConverters.CountOpacity}}">
+                <TextBlock Classes="icon" Text="{x:Static nf:Oct.Diff}" />
+                <TextBlock Text="{Binding Changes}" VerticalAlignment="Center" />
+              </StackPanel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="Stashes" SortMemberPath="Stashes" Width="100">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="m:RepoStatus">
+              <StackPanel Classes="cell"
+                          Opacity="{Binding Stashes, Converter={x:Static c:RepoConverters.CountOpacity}}">
+                <TextBlock Classes="icon" Text="{x:Static nf:Cod.GitStash}" />
+                <TextBlock Text="{Binding Stashes}" VerticalAlignment="Center" />
+              </StackPanel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="Local-only branches" SortMemberPath="LocalOnlyBranchesText" Width="2*">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="m:RepoStatus">
+              <StackPanel Classes="cell" ToolTip.Tip="{Binding LocalOnlyBranchesText}">
+                <TextBlock Classes="muted" Text="{Binding LocalOnlyBranchesText}" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="Last commit" SortMemberPath="LastCommit" Width="140">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="m:RepoStatus">
+              <StackPanel Classes="cell">
+                <TextBlock Classes="icon" Text="{x:Static nf:Oct.Clock}" Opacity="0.8" />
+                <TextBlock Text="{Binding LastCommitText}" VerticalAlignment="Center" />
+              </StackPanel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+      </DataGrid.Columns>
+    </DataGrid>
+
+  </DockPanel>
+</Window>
