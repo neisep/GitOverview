@@ -19,10 +19,7 @@
     <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\neisep.NerdFonts\src\neisep.NerdFonts\neisep.NerdFonts.csproj" />
+    <PackageReference Include="neisep.NerdFonts" Version="1.0.0" />
   </ItemGroup>
 
 </Project>
